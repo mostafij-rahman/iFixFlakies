@@ -16,6 +16,8 @@ import edu.illinois.cs.testrunner.mavenplugin.TestPlugin;
 import edu.illinois.cs.testrunner.mavenplugin.TestPluginPlugin;
 import edu.illinois.cs.testrunner.runner.Runner;
 import edu.illinois.cs.testrunner.runner.RunnerFactory;
+
+import org.apache.maven.profiles.AlwaysOnActivation;
 import org.apache.maven.project.MavenProject;
 
 import java.io.IOException;
@@ -169,6 +171,22 @@ public class MinimizerPlugin extends TestPlugin {
         }
 
         TestMinimizer tm;
+        
+        //Added code by Md Mostafijur Rahman start
+        
+		List<String> intendedTestBeforeDependent = new ArrayList<String>(); 
+		List<String> revealedTestBeforeDependent = new ArrayList<String>(); 
+		
+	    intendedTestBeforeDependent =   intended.order();
+		
+	    revealedTestBeforeDependent = 	revealed.order();
+		int intendedLen = intendedTestBeforeDependent.size();
+		int revaledLen = revealedTestBeforeDependent.size();
+		 
+		List<String> prefix;
+		
+		//Added code by Md Mostafijur Rahman end
+		 
         if (originalOrder != null) {
             TestPluginPlugin.info("Using original order to run Minimizer instead of intended or revealed order.");
             if (!isolationResult.equals(Result.PASS)) {
@@ -177,10 +195,38 @@ public class MinimizerPlugin extends TestPlugin {
                 tm = minimizerBuilder.testOrder(reorderOriginalOrder(revealed.order(), originalOrder)).build();
             }
         } else if (!isolationResult.equals(Result.PASS)) { // Does not pass in isolation, needs setter, so need to minimize passing order
-            tm = minimizerBuilder.testOrder(intended.order()).build();
+            //tm = minimizerBuilder.testOrder(intended.order()).build();
+        	
+        	//Modified code by Md Mostafijur Rahman start
+        	
+        	 prefix = new ArrayList<String>(intendedTestBeforeDependent);
+        	 prefix.removeAll(revealedTestBeforeDependent);
+			 
+        	 System.out.println("Brittle: passing order upto dependent test: " + intendedTestBeforeDependent);
+        	 
+			 System.out.println("************************************");
+			 System.out.println("Passing order size = " + intendedLen + " Prefix size = "+ prefix.size() + " prefix = " + prefix);
+			 System.out.println("************************************");
+			 
+			 tm = minimizerBuilder.testOrder(prefix).build();
+			 
+			//Modified code by Md Mostafijur Rahman end
             
         } else {    // Otherwise passes in isolation, needs polluter, so need to minimize failing order
-            tm = minimizerBuilder.testOrder(revealed.order()).build();
+           //tm = minimizerBuilder.testOrder(revealed.order()).build();
+        	
+        	//Modified code by Md Mostafijur Rahman start
+			
+        	 prefix = new ArrayList<String>(revealedTestBeforeDependent);
+       	 	 prefix.removeAll(intendedTestBeforeDependent);      	 		 	  	 
+       	 	 System.out.println("Victim: failing order upto dependent test: " + revealedTestBeforeDependent);
+			 System.out.println("************************************");
+			 System.out.println("Failing order size = " + revaledLen + " prefix size = "+ prefix.size() + " prefix = " + prefix);
+			 System.out.println("************************************");
+			 
+			 tm = minimizerBuilder.testOrder(prefix).build();
+			 
+        	//Modified code by Md Mostafijur Rahman end
         }
         String victimBrittleStr = !isolationResult.equals(Result.PASS) 
                 ? "Test is brittle. Result of running test in isolation is: " + isolationResult
@@ -231,3 +277,4 @@ public class MinimizerPlugin extends TestPlugin {
         StreamUtil.seq(runDependentTestFile(DetectorPathManager.detectionFile(), project));
     }
 }
+
